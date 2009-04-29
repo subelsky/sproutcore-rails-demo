@@ -1,0 +1,24 @@
+rails -v # 2.3.2
+sproutcore -v # 0.9.23
+sudo gem install sqlite3-ruby --no-ri --no-rdoc
+
+rails cookbook
+cd cookbook
+rake db:create:all
+
+script/generate model recipe name:string prep_time:integer cook_time:integer
+
+add to routes.rb
+     map.resources :recipes
+
+replace recipes.yml with
+  one:
+    name: "Macaroni and Cheese"
+    prep_time: 5
+    cook_time: 10
+
+  two:
+    name: "Duck l'Orange"
+    prep_time: 30
+    cook_time: 2400
+    
