@@ -1,0 +1,7 @@
+<% content_for('body') do %>
+  <% view :wrapper do -%>
+    <% scroll_view do -%>
+      <%= list_view :recipes, :row_height => 36, :bind => { :content => 'Cookbook.recipeMasterController.arrangedObjects', :selection => 'Cookbook.recipeMasterController.selection' }  %>
+    <% end -%>
+  <% end -%>
+<% end %>
