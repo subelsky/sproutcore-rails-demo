@@ -1,3 +1,5 @@
+NOTE: Firebug or webkit inspector
+
 rails -v # 2.3.2
 sproutcore -v # 0.9.23
 sudo gem install sqlite3-ruby --no-ri --no-rdoc
@@ -5,11 +7,10 @@ sudo gem install sqlite3-ruby --no-ri --no-rdoc
 rails cookbook
 cd cookbook
 rake db:create:all
+script/server
+visit http://localhost:3000/
 
-script/generate model recipe name:string prep_time:integer cook_time:integer
-
-add to routes.rb
-     map.resources :recipes
+script/generate resource recipe name:string prep_time:integer cook_time:integer
 
 replace recipes.yml with
   one:
@@ -63,3 +64,87 @@ in the config block for environment.rb
 
 Open console
 	type RecipePresenter.new.to_hash
+	
+Add to recipes controller:
+
+  def index
+    render :text => RecipePresenter.new.to_hash.to_json
+  end
+
+restart server
+
+visit http://localhost:3000/recipes
+
+sc-init cookbook
+cd cookbook
+sc-server
+
+in browser check http://localhost:4020/cookbook
+
+sc-gen model cookbook/recipe
+
+add to fixtures/recipe.js
+
+  { guid: 1,
+    name: "Peanut Butter and Jelly",
+    type: 'Recipe',
+    prep_time: 3,
+    cook_time: 0
+    },
+  
+  { guid: 2,
+    name: "Vegetable Korma",
+    type: 'Recipe',
+    prep_time: 45,
+    cook_time: 35
+    }
+
+reload browser
+Cookbook.Recipe.find(1).get('name')
+Cookbook.Recipe.find(2).get('name')
+
+change core.js
+  server: SC.RailsServer.create({ prefix: ['Cookbook'] }),
+
+add to core.js
+  localMode: window.location.hash === '#development',
+
+add to recipe model
+
+  dataSource: Cookbook.server,
+  resourceURL: 'sc/recipes'
+
+change main.js
+	
+  if (Cookbook.localMode) {
+    Cookbook.server.preload(Cookbook.FIXTURES) ;
+  } else {
+    Cookbook.server.listFor({ recordType: Cookbook.Recipe });
+  }
+
+add to sc-config
+	proxy '/sc', :url => "", :to => 'localhost:3000'
+
+restart sc-server
+
+check the SC logs and the Rails server logs
+
+then at the consle type
+Cookbook.Recipe.findAll().inspect()
+Cookbook.Recipe.find(####).get('name')
+Cookbook.Recipe.find(####).get('name')
+
+sc-gen controller cookbook/recipe_master SC.CollectionController
+
+add to main.js
+	var recipes = Cookbook.Recipe.collection();
+	Cookbook.recipeMasterController.set('content',recipes);
+	recipes.refresh();
+
+reload browser, then
+Cookbook.recipeMasterController.get('arrangedObjects').inspect()
+
+- Rails auth token
+- computed property for time display 
+- unit tests
+- load screen
