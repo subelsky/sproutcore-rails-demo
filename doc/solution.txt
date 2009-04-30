@@ -244,6 +244,8 @@ add after sidebar:
 
 - reload, notice that properties aren't being sent
 
+- add to recipe.js
+  properties: ['name','prepTime','cookTime']
 
 
 - ADD PROPERTIES TO RECIPE SO SAVE WORKS
