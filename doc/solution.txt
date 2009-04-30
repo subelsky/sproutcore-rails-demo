@@ -134,16 +134,39 @@ Cookbook.Recipe.findAll().inspect()
 Cookbook.Recipe.find(####).get('name')
 Cookbook.Recipe.find(####).get('name')
 
-sc-gen controller cookbook/recipe_master SC.CollectionController
+sc-gen controller cookbook/recipes SC.CollectionController
+
+talk about collection controller vs array controller vs obj controller
 
 add to main.js
-	var recipes = Cookbook.Recipe.collection();
-	Cookbook.recipeMasterController.set('content',recipes);
-	recipes.refresh();
+  var recipes = Cookbook.Recipe.collection({ orderBy: ['name'] });
+  Cookbook.recipesController.set('content',recipes);
+  recipes.refresh();
 
-reload browser, then
+talk about collection object
+
+reload browser in localMode and normal mode, then
 Cookbook.recipeMasterController.get('arrangedObjects').inspect()
 
+change body.html
+	<% content_for('body') do %>
+	  <% view :wrapper do -%>
+	    <%= list_view :recipes, 
+	        :row_height => 36,
+	        :content_value_key => 'name', 
+	        :bind => { :content => 'Cookbook.recipesController.arrangedObjects', 
+	                   :selection => 'Cookbook.recipesController.selection' }  %>
+	  <% end -%>
+	<% end %>
+
+reload browser in localMode and normal mode and make sure list displays
+	- select an objects then type
+	Cookbook.recipesController.get('selection').inspect() 
+
+- array controller instead of coll controller
+	http://groups.google.com/group/sproutcore/browse_thread/thread/aa557bc6e357f418/d88c301a040fd6ef?lnk=gst&q=collection#d88c301a040fd6ef
+	
+- don't allow nil selection, & allow multiple selection
 - Rails auth token
 - computed property for time display 
 - unit tests

@@ -34,8 +34,13 @@ function main() {
   // Step 3. Set the content property on your primary controller.
   // This will make your app come alive!
 
-  var recipes = Cookbook.Recipe.collection();
-  Cookbook.recipeMasterController.set('content',recipes);
+  // works with fixtures
+  var recipes = Cookbook.Recipe.collection({ orderBy: ['name'] });
+  Cookbook.recipesController.set('content',recipes);
   recipes.refresh();
+
+  // works with REST
+  // var recipes = Cookbook.Recipe.findAll();
+  // Cookbook.recipesController.set('content',recipes);
   
 } ;

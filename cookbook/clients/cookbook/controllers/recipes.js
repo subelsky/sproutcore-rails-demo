@@ -1,10 +1,10 @@
 // ==========================================================================
-// Cookbook.RecipeMasterController
+// Cookbook.recipesController
 // ==========================================================================
 
 require('core');
 
-Cookbook.recipeMasterController = SC.CollectionController.create({
+Cookbook.recipesController = SC.CollectionController.create({
 
 
 });
