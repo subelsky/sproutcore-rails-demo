@@ -86,17 +86,17 @@ sc-gen model cookbook/recipe
 add to fixtures/recipe.js
 
   { guid: 1,
-    name: "Peanut Butter and Jelly",
+    name: "Nachos",
     type: 'Recipe',
-    prep_time: 3,
-    cook_time: 0
+    prepTime: 3,
+    cookTime: 1
     },
   
   { guid: 2,
     name: "Vegetable Korma",
     type: 'Recipe',
-    prep_time: 45,
-    cook_time: 35
+    prepTime: 45,
+    cookTime: 35
     }
 
 reload browser
@@ -150,24 +150,116 @@ Cookbook.recipeMasterController.get('arrangedObjects').inspect()
 
 change body.html
 	<% content_for('body') do %>
-	  <% view :wrapper do -%>
+	  <% view :sidebar do -%>
 	    <%= list_view :recipes, 
-	        :row_height => 36,
+	        :row_height => 20,
 	        :content_value_key => 'name', 
 	        :bind => { :content => 'Cookbook.recipesController.arrangedObjects', 
 	                   :selection => 'Cookbook.recipesController.selection' }  %>
 	  <% end -%>
 	<% end %>
 
+reload browser
+  nothing displayed WTF?
+  talk about absolute positioning
+
+paste in body.css
+
 reload browser in localMode and normal mode and make sure list displays
 	- select an objects then type
 	Cookbook.recipesController.get('selection').inspect() 
 
-- array controller instead of coll controller
-	http://groups.google.com/group/sproutcore/browse_thread/thread/aa557bc6e357f418/d88c301a040fd6ef?lnk=gst&q=collection#d88c301a040fd6ef
-	
+  - select multiple objects and type
+  
+- talk about row_height, content_value_key, bind
+
+then add to recipes.js
+  allowsEmptySelection: false,
+  allowsMultipleSelection: false
+
+reload browser and test effects
+
+sc-gen controller cookbook/recipe SC.ObjectController
+
+add to recipe.js controller
+  contentBinding: 'Cookbook.recipesController.selection'
+
+add after sidebar:
+
+  <% view :main do -%>
+  	<div class='row'>
+  		<label>Name</label>
+      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.name' } %>
+  	</div>
+
+  	<div class='row'>
+  	  <label>Prep Time</label>
+      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.prepTime' } %>
+  	</div>
+
+  	<div class='row'>
+  	  <label>Cook Time</label>
+      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.cookTime' } %>
+  	</div>
+  <% end -%>
+
+- note camel case of properties
+- reload browser, click around
+- change the name property, see it change "real time"
+- append :size => 4 to helpers
+
+- add to recipe.js controller
+  commitChangesImmediately: false
+
+- reload and note how changes don't persist when click away
+
+- then add inside main view:
+
+  	<% view :toolbar do -%> 
+  		<%= button_view :label => "Save", 
+                			:default => true,
+                      :action => 'Cookbook.recipeController.commitChanges',
+                      :bind => {
+                        :enabled => "Cookbook.recipeController.hasChanges"
+                      }  %>
+
+  	<% end -%>
+
+- reload and see how changes do persist
+
+- but notice nothing going to server
+
+- add this to recipe controller:
+
+  commitRecord: function() {
+    var content = this.get('content');
+    if (content && content.get('length') == 1) {
+      content.objectAt(0).commit();
+    }
+    this.commitChanges();
+  }
+
+- change save button to this action 
+	Cookbook.recipeController.commitRecord
+
+- reload, notice that properties aren't being sent
+
+
+
+- ADD PROPERTIES TO RECIPE SO SAVE WORKS
+
+- cancel button
+	MochiContacts.detailController.discardChanges',
+
+- hasMany ingredients
+- custom view
+- app page title
 - don't allow nil selection, & allow multiple selection
 - Rails auth token
 - computed property for time display 
 - unit tests
+- reorder content (at least show it)
 - load screen
+
+- array controller instead of coll controller
+	http://groups.google.com/group/sproutcore/browse_thread/thread/aa557bc6e357f418/d88c301a040fd6ef?lnk=gst&q=collection#d88c301a040fd6ef
