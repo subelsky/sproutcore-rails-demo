@@ -99,28 +99,33 @@ add to fixtures/recipe.js
     cookTime: 35
     }
 
+add to main.js
+	
+  Cookbook.server.preload(Cookbook.FIXTURES) ;
+
 reload browser
 Cookbook.Recipe.find(1).get('name')
 Cookbook.Recipe.find(2).get('name')
 
-change core.js
-  server: SC.RailsServer.create({ prefix: ['Cookbook'] }),
+- now let's hook it up to server
 
 add to core.js
-  localMode: window.location.hash === '#development',
+	localMode = window.location.hash === '#development';
 
-add to recipe model
-
-  dataSource: Cookbook.server,
-  resourceURL: 'sc/recipes'
+  localMode: localMode,
+  server: SC.RailsServer.create({ prefix: ['Cookbook'] }),
 
 change main.js
-	
+
   if (Cookbook.localMode) {
     Cookbook.server.preload(Cookbook.FIXTURES) ;
   } else {
     Cookbook.server.listFor({ recordType: Cookbook.Recipe });
   }
+
+add to recipe model
+
+  resourceURL: 'sc/recipes'
 
 add to sc-config
 	proxy '/sc', :url => "", :to => 'localhost:3000'
@@ -134,19 +139,27 @@ Cookbook.Recipe.findAll().inspect()
 Cookbook.Recipe.find(####).get('name')
 Cookbook.Recipe.find(####).get('name')
 
-sc-gen controller cookbook/recipes SC.CollectionController
+sc-gen controller cookbook/recipes SC.ArrayController
 
 talk about collection controller vs array controller vs obj controller
 
-add to main.js
-  var recipes = Cookbook.Recipe.collection({ orderBy: ['name'] });
-  Cookbook.recipesController.set('content',recipes);
-  recipes.refresh();
+change main.js
 
-talk about collection object
+  if (Cookbook.localMode) {
+    Cookbook.server.preload(Cookbook.FIXTURES) ;
+    Cookbook.startup();
+  } else {
+    Cookbook.server.listFor({ recordType: Cookbook.Recipe, callback: Cookbook.startup });
+  }
 
-reload browser in localMode and normal mode, then
-Cookbook.recipeMasterController.get('arrangedObjects').inspect()
+create core_app.js
+
+	Cookbook.startup = function() {
+	  var recipes = Cookbook.Recipe.findAll();
+	  Cookbook.recipesController.set('content',recipes);
+	};
+
+Cookbook.recipesController.get('arrangedObjects').inspect()
 
 change body.html
 	<% content_for('body') do %>
@@ -164,7 +177,8 @@ reload browser
   talk about absolute positioning
 
 paste in body.css
-
+	<snip>
+	
 reload browser in localMode and normal mode and make sure list displays
 	- select an objects then type
 	Cookbook.recipesController.get('selection').inspect() 
@@ -246,13 +260,127 @@ add after sidebar:
 
 - add to recipe.js
   properties: ['name','prepTime','cookTime']
+	but sends everything, that's a bug
 
+- BUG FIX/WORKAROUND FOR URL ENCODING STEP GOES HERE
 
-- ADD PROPERTIES TO RECIPE SO SAVE WORKS
+- add cancel button
 
-- cancel button
-	MochiContacts.detailController.discardChanges',
+	<%= button_view :label => "Cancel", 
+	                :action => 'Cookbook.recipeController.discardChanges', :bind => {
+	                    :enabled => "Cookbook.recipeController.hasChanges"
+	                  } %>
 
+- reload and try it
+
+- then add this to cancel
+  		                :cancel => true,
+
+- reload and try it
+
+- type this at console
+	Cookbook.recipesController.newObject({ name: "Quiche Lorraine" })
+
+- why didn't it show up?  need to add this to recipes controller:
+
+  canEditCollection: true
+
+- SWITCH TO ARRAY CONTROLLER EXPLANATION?
+	change main.js
+	switch to recipesController
+	"smart query"  "expensive SC.collection"
+
+- now let's add some buttons:
+
+	- make room for buttons by changing #recipes_list_scroll height to 95%
+
+	- add to body.rhtml
+    <% view :sidebar_toolbar do -%>
+  		<%= button_view :label => "+", :action => 'Cookbook.recipesController.addObject' %>
+    <% end -%>
+
+	- add to body.css
+	
+	#sidebar_toolbar {
+	  position: absolute;
+	  top:  95%;
+	  left:  0px;
+	  width: 200px;
+	  height: 5%;
+	}
+
+- add to recipe.js for default values
+
+  init: function() {
+    this.set('name','New Recipe');
+    this.set('dataSource',Cookbook.server); // since we are not using collections, this doesn't get set automatically
+    sc_super();
+  }
+
+- add to recipesController
+
+  addObject: function() {
+    var newObj = Cookbook.Recipe.newRecord({},Cookbook.server);
+    this.pushObject(newObj);
+    this.set('selection',[newObj]);
+  }
+
+- add to recipeController
+
+  saveable: function() {
+    
+    if (this.get('hasChanges')) { 
+      return true;
+    }
+    
+    var content = this.get('content');
+    var save = false;
+
+    if (content && content.get('length') == 1) {
+      save = content.objectAt(0).get('newRecord');
+    } 
+    
+    return save;
+  }.property('hasChanges','content*newRecord')
+
+- change save button to bind to "Cookbook.recipeController.saveable"
+
+- try saving, check Rails server log
+
+- add to application.rb
+
+  def auth_token
+    respond_to do |wants|
+      wants.js do
+        if protect_against_forgery?
+          render :text => "var SC = SC || {};  
+            SC.RAILS_AUTH_TOKEN_NAME = '#{request_forgery_protection_token}';
+            SC.RAILS_AUTH_TOKEN = '#{form_authenticity_token}';"
+        end
+      end
+    end
+  end
+
+- add to routes.rb
+
+  map.connect 'auth-token.js', :controller => 'application', :action => 'auth_token'
+
+- add to sc-config
+
+  c[:javascript_libs] = ['/sc/auth-token.js']
+
+- reload browser
+
+- inspect source, you'll see the call to auth-token.js
+	- this is a good place to do login checks too
+
+- in console, type 
+	SC.RAILS_AUTH_TOKEN
+
+- now try to add, save
+
+- validation crap?
+- sorting?
 - hasMany ingredients
 - custom view
 - app page title
@@ -261,6 +389,8 @@ add after sidebar:
 - computed property for time display 
 - unit tests
 - reorder content (at least show it)
+- build tools
+- SC 1.0 API diffs
 - load screen
 
 - array controller instead of coll controller

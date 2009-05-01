@@ -7,4 +7,18 @@ class ApplicationController < ActionController::Base
 
   # Scrub sensitive parameters from your log
   # filter_parameter_logging :password
+
+  # from Lawrence Pit in the SC.RailsServer docs
+  def auth_token
+    respond_to do |wants|
+      wants.js do
+        if protect_against_forgery?
+          render :text => "var SC = SC || {};  
+            SC.RAILS_AUTH_TOKEN_NAME = '#{request_forgery_protection_token}';
+            SC.RAILS_AUTH_TOKEN = '#{form_authenticity_token}';"
+        end
+      end
+    end
+  end
+
 end

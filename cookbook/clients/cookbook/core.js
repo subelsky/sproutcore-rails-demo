@@ -2,9 +2,13 @@
 // Cookbook
 // ==========================================================================
 
-Cookbook = SC.Object.create({
+require('cookbook_server');
 
-  localMode: window.location.hash === '#development',
+localMode = window.location.hash === '#development';
+
+Cookbook = SC.Object.create({
+  
+  localMode: localMode,
 
   // This will create the server for your application.  Add any namespaces
   // your model objects are defined in to the prefix array.

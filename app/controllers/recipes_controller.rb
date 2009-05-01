@@ -4,4 +4,8 @@ class RecipesController < ApplicationController
     render :text => RecipePresenter.new.to_hash.to_json
   end
   
+  def update
+    pp params
+  end
+  
 end

@@ -6,6 +6,12 @@
           :content_value_key => 'name', 
           :bind => { :content => 'Cookbook.recipesController.arrangedObjects', 
                      :selection => 'Cookbook.recipesController.selection' }  %>
+
+    <% end -%>
+
+    <% view :sidebar_toolbar do -%>
+  		<%= button_view :label => "+", :action => 'Cookbook.recipesController.addObject' %>
+      
     <% end -%>
   <% end -%>
 
@@ -30,8 +36,14 @@
                 			:default => true,
                       :action => 'Cookbook.recipeController.commitRecord',
                       :bind => {
-                        :enabled => "Cookbook.recipeController.hasChanges"
+                        :enabled => "Cookbook.recipeController.saveable"
                       }  %>
+
+  		<%= button_view :label => "Cancel", 
+  		                :cancel => true,
+  		                :action => 'Cookbook.recipeController.discardChanges', :bind => {
+                        :enabled => "Cookbook.recipeController.hasChanges"
+                      } %>
 
   	<% end -%>
 
