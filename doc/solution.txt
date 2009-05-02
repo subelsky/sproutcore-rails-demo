@@ -25,6 +25,12 @@ replace recipes.yml with
 
 rake db:create db:migrate db:fixtures:load   
 
+add to recipe.rb model
+
+  def to_hash
+    attributes.except('updated_at','created_at').merge(:guid => self[:id], :type => "Recipe")
+  end
+
 mkdir app/presenters
 
 create app/presenters/recipe_presenter.rb
@@ -49,12 +55,7 @@ create app/presenters/recipe_presenter.rb
 	  end
   
 	  def records
-	    unless @records
-	      @records = recipes.map do |recipe|
-	        recipe.attributes.merge(:guid => recipe.id, :type => "Recipe")
-	      end
-	    end
-	    return @records
+    	@records ||= recipes.map { |recipe| recipe.to_hash }
 	  end
   
 	end
@@ -365,9 +366,11 @@ add after sidebar:
 
   map.connect 'auth-token.js', :controller => 'application', :action => 'auth_token'
 
-- add to sc-config
+- add page_javascript.js to english.lproj
 
-  c[:javascript_libs] = ['/sc/auth-token.js']
+	<% content_for('page_javascript') do -%>
+	  <script src="/sc/auth-token.js" type="text/javascript"></script>
+	<% end -%>
 
 - reload browser
 
@@ -379,6 +382,10 @@ add after sidebar:
 
 - now try to add, save
 
+- ajax spinner
+- custom view for stale/pending etc
+
+- error handling?
 - validation crap?
 - sorting?
 - hasMany ingredients

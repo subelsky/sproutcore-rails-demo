@@ -41,8 +41,6 @@ config :all do |c|
   # automatically.
   # c[:javascript_libs] = ['/javascript/scriptaculous.js']
 
-  c[:javascript_libs] = ['/sc/auth-token.js']
-
   # This is the preferred language.  When the user visits the root URL of
   # your client, this is the language they will get.  When looking for a
   # resources (such as an image or stylesheet), SproutCore will also try

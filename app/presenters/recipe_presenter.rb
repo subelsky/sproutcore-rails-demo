@@ -4,7 +4,7 @@ class RecipePresenter
   end
 
   def to_hash
-    { :records => records, :ids => recipe_ids }
+    { :records => records }
   end
 
   private
@@ -18,12 +18,7 @@ class RecipePresenter
   end
   
   def records
-    unless @records
-      @records = recipes.map do |recipe|
-        recipe.attributes.merge(:guid => recipe.id, :type => "Recipe")
-      end
-    end
-    return @records
+    @records ||= recipes.map { |recipe| recipe.to_hash }
   end
   
 end

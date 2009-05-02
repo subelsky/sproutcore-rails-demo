@@ -6,11 +6,11 @@ Cookbook.recipeController = SC.ObjectController.create({
   commitChangesImmediately: false,
   
   commitRecord: function() {
+    this.commitChanges();
     var content = this.get('content');
     if (content && content.get('length') == 1) {
       content.objectAt(0).commit();
     }
-    this.commitChanges();
   },
   
   saveable: function() {
