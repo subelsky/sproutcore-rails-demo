@@ -64,7 +64,10 @@ Cookbook.executeAjax = function(url,method,opts) {
   if (opts.method != 'get') {
     opts.parameters[SC.RAILS_AUTH_TOKEN_NAME] = SC.RAILS_AUTH_TOKEN;
   } 
-
+  // opts.parameters._method = opts.method;
+  
+  console.info($I(opts.parameters))
+  
   if (!Cookbook.localMode) {
     var request = new Ajax.Request(url,opts);
   }

@@ -382,9 +382,11 @@ add after sidebar:
 
 - now try to add, save
 
+- check proper invalid data response, is 403 the right code?
 - ajax spinner
 - custom view for stale/pending etc
 
+- flash display?
 - error handling?
 - validation crap?
 - sorting?

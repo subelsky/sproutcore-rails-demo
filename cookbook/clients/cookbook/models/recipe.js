@@ -28,9 +28,9 @@ Cookbook.Recipe = SC.Record.extend({
     var opts = {
       parameters: parameters,
       onSuccess: function(transport) {
-        console.info("setting %@".fmt(transport.responseText))
-        this.set('guid',transport.responseText); // if create works, server returns the persistent server GUID
-        console.info(this.get('guid'))
+        // this ensures that the guid gets updated to match what the server thinks, and generally acts to ensure
+        // the client and server are definitely in sync
+        this.updateAttributes(transport.responseJSON);
       }.bind(this),
       onFailure: function(transport) {
         console.warn("Recipe commit failed due to: '%@'".fmt(transport.statusText));
