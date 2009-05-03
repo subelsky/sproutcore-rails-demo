@@ -4,8 +4,10 @@ one:
   name: "Macaroni and Cheese"
   prep_time: 5
   cook_time: 10
-
+  spice: 0
+  
 two:
   name: "Duck l'Orange"
   prep_time: 30
   cook_time: 2400
+  spice: 100

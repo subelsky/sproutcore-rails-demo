@@ -1,9 +1,16 @@
 class RecipesController < ApplicationController
 
   before_filter :decode_recipe, :only => [:create,:update]
-  
+
   def index
-    render :text => RecipePresenter.new.to_hash.to_json
+    response_hash = RecipePresenter.new.to_hash
+
+    if protect_against_forgery?
+      response_hash[:rails_auth_token_name] = request_forgery_protection_token
+      response_hash[:rails_auth_token] = form_authenticity_token
+    end
+
+    render :json => response_hash
   end
   
   def create
@@ -15,19 +22,25 @@ class RecipesController < ApplicationController
   end
   
   def update    
-    guid = @recipe_params.delete('guid')
-    recipe = Recipe.find(guid) # we're counting on find to raise an exception if the recipe not found
+    recipe = Recipe.find(params[:id])
+
     if recipe.update_attributes(@recipe_params)
       render :json => recipe.to_hash
     else
-      render :text => "Unable to update recipe due to #{$!.message}", :status => 403
+      render :text => "Unable to update recipe due to #{recipe.errors.full_messages.join(". ")}", :status => 403
     end
   end
 
+  def destroy
+    Recipe.destroy(params[:id])
+    render :nothing => true
+  end
+  
   private
   
   def decode_recipe
     @recipe_params = ActiveSupport::JSON.decode(params[:recipe])
+    @recipe_params.delete('guid') # we use the URL id which is the same as the guid
   end
   
 end

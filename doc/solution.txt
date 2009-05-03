@@ -1,4 +1,4 @@
-NOTE: Firebug or webkit inspector
+NOTE: Firefox with Firebug or webkit inspector
 
 rails -v # 2.3.2
 sproutcore -v # 0.9.23
@@ -28,7 +28,7 @@ rake db:create db:migrate db:fixtures:load
 add to recipe.rb model
 
   def to_hash
-    attributes.except('updated_at','created_at').merge(:guid => self[:id], :type => "Recipe")
+    attributes.except('id','updated_at','created_at').merge(:guid => self[:id], :type => "Recipe")
   end
 
 mkdir app/presenters
@@ -41,7 +41,7 @@ create app/presenters/recipe_presenter.rb
 	  end
 
 	  def to_hash
-	    { :records => records, :ids => recipe_ids }
+	    { :records => records }
 	  end
 
 	  private
@@ -55,21 +55,22 @@ create app/presenters/recipe_presenter.rb
 	  end
   
 	  def records
-    	@records ||= recipes.map { |recipe| recipe.to_hash }
+	    @records ||= recipes.map { |recipe| recipe.to_hash }
 	  end
-  
+    
 	end
 
 in the config block for environment.rb
 	  config.load_paths << "#{RAILS_ROOT}/app/presenters"
 
-Open console
+script/console
 	type RecipePresenter.new.to_hash
 	
 Add to recipes controller:
 
   def index
-    render :text => RecipePresenter.new.to_hash.to_json
+    response_hash = RecipePresenter.new.to_hash
+    render :json => response_hash
   end
 
 restart server
@@ -89,15 +90,15 @@ add to fixtures/recipe.js
   { guid: 1,
     name: "Nachos",
     type: 'Recipe',
-    prepTime: 3,
-    cookTime: 1
+    prep_time: 3,
+    cook_time: 1
     },
   
   { guid: 2,
     name: "Vegetable Korma",
     type: 'Recipe',
-    prepTime: 45,
-    cookTime: 35
+    prep_time: 45,
+    cook_time: 35
     }
 
 add to main.js
@@ -111,31 +112,77 @@ Cookbook.Recipe.find(2).get('name')
 - now let's hook it up to server
 
 add to core.js
-	localMode = window.location.hash === '#development';
-
-  localMode: localMode,
-  server: SC.RailsServer.create({ prefix: ['Cookbook'] }),
+	localMode: window.location.hash === '#development';
 
 change main.js
 
   if (Cookbook.localMode) {
-    Cookbook.server.preload(Cookbook.FIXTURES) ;
+    Cookbook.server.preload(Cookbook.FIXTURES);
+		Cookbook.startup();
   } else {
-    Cookbook.server.listFor({ recordType: Cookbook.Recipe });
+    Cookbook.fetchRecipes(Cookbook.startup);		
   }
 
-add to recipe model
+create core_app.js, add this:
 
-  resourceURL: 'sc/recipes'
+Cookbook.RECIPES_COLLECTION_PATH = '/sc/recipes';
+
+Cookbook.fetchRecipes = function(successFunction) {
+  var opts = {
+    onSuccess: function(transport) {
+      Cookbook.parseFetchResponse(transport);
+      if (successFunction) {
+        successFunction(); 
+      }
+    },
+  
+    onFailure: function(transport) {
+      console.warn("Recipe fetching failed due to: '%@'".fmt(transport.statusText));
+    }
+  };
+  
+  Cookbook.executeAjax(Cookbook.RECIPES_COLLECTION_PATH,'get', opts);
+};
+
+Cookbook.startup = function() {
+  var recipes = Cookbook.Recipe.findAll();
+  Cookbook.recipesController.set('content',recipes);
+};
+
+Cookbook.parseFetchResponse = function(transport) {
+  var response = transport.responseJSON;
+  var records = response.records;
+  
+  var idx = records.length;
+  var record;
+  
+  while (idx--) {
+    record = Cookbook.Recipe.newRecord(records[idx]);
+    record.set('newRecord',false);
+  }
+
+};
+
+Cookbook.executeAjax = function(url,method,opts) {
+  opts = opts || {};
+  opts.method = method;
+  opts.emulateUncommonMethods = true; // so that PUT gets turned into _method: put like Rails expects
+
+  if (!Cookbook.localMode) {
+    var request = new Ajax.Request(url,opts);
+  }
+};
+
+- reload browser and try, notice nothing happens -- check merb log
 
 add to sc-config
 	proxy '/sc', :url => "", :to => 'localhost:3000'
 
 restart sc-server
 
-check the SC logs and the Rails server logs
+reload browser, then check the SC logs and the Rails server logs
 
-then at the consle type
+then at the console type
 Cookbook.Recipe.findAll().inspect()
 Cookbook.Recipe.find(####).get('name')
 Cookbook.Recipe.find(####).get('name')
@@ -144,34 +191,22 @@ sc-gen controller cookbook/recipes SC.ArrayController
 
 talk about collection controller vs array controller vs obj controller
 
-change main.js
-
-  if (Cookbook.localMode) {
-    Cookbook.server.preload(Cookbook.FIXTURES) ;
-    Cookbook.startup();
-  } else {
-    Cookbook.server.listFor({ recordType: Cookbook.Recipe, callback: Cookbook.startup });
-  }
-
-create core_app.js
-
-	Cookbook.startup = function() {
-	  var recipes = Cookbook.Recipe.findAll();
-	  Cookbook.recipesController.set('content',recipes);
-	};
-
+- reload browser then type
 Cookbook.recipesController.get('arrangedObjects').inspect()
 
 change body.html
 	<% content_for('body') do %>
-	  <% view :sidebar do -%>
-	    <%= list_view :recipes, 
-	        :row_height => 20,
-	        :content_value_key => 'name', 
-	        :bind => { :content => 'Cookbook.recipesController.arrangedObjects', 
-	                   :selection => 'Cookbook.recipesController.selection' }  %>
-	  <% end -%>
-	<% end %>
+  	<% view :sidebar do -%>
+			<% scroll_view :recipes_list_scroll do -%>
+      	<%= list_view :recipes_list, 
+          						:row_height => 36,
+          						:content_value_key => 'name', 
+          						:bind => { :content => 'Cookbook.recipesController.arrangedObjects', 
+                     						 :selection => 'Cookbook.recipesController.selection' }  %>
+
+    	<% end -%>
+		<% end -%>
+	<% end ->
 
 reload browser
   nothing displayed WTF?
@@ -182,9 +217,9 @@ paste in body.css
 	
 reload browser in localMode and normal mode and make sure list displays
 	- select an objects then type
-	Cookbook.recipesController.get('selection').inspect() 
+	Cookbook.recipesController.get('selection').inspect()
 
-  - select multiple objects and type
+  - select multiple objects
   
 - talk about row_height, content_value_key, bind
 
@@ -199,7 +234,12 @@ sc-gen controller cookbook/recipe SC.ObjectController
 add to recipe.js controller
   contentBinding: 'Cookbook.recipesController.selection'
 
-add after sidebar:
+reload browser and type
+	Cookbook.recipeController.get('content')
+
+talk about bug with not being able to return a singular object
+
+in body.rhtml after sidebar add:
 
   <% view :main do -%>
   	<div class='row'>
@@ -209,18 +249,24 @@ add after sidebar:
 
   	<div class='row'>
   	  <label>Prep Time</label>
-      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.prepTime' } %>
+      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.prep_time' } %>
   	</div>
 
   	<div class='row'>
   	  <label>Cook Time</label>
-      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.cookTime' } %>
+      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.cook_time' } %>
   	</div>
+
   <% end -%>
 
-- note camel case of properties
 - reload browser, click around
 - change the name property, see it change "real time"
+	type Cookbook.recipeController.get('content').objectAt(0).set('name','Railsconf')
+	explain objectAt and KVO
+
+- notice that save button always enabled; add
+	:bind => { :enabled => "Cookbook.recipeController.hasChanges" }	
+
 - append :size => 4 to helpers
 
 - add to recipe.js controller
@@ -233,51 +279,69 @@ add after sidebar:
   	<% view :toolbar do -%> 
   		<%= button_view :label => "Save", 
                 			:default => true,
-                      :action => 'Cookbook.recipeController.commitChanges',
-                      :bind => {
-                        :enabled => "Cookbook.recipeController.hasChanges"
-                      }  %>
-
+                      :action => 'Cookbook.recipeController.commitRecord' %>
   	<% end -%>
 
-- reload and see how changes do persist
-
-- but notice nothing going to server
-
-- add this to recipe controller:
+- add this to recipe controller
 
   commitRecord: function() {
+    this.commitChanges();
     var content = this.get('content');
     if (content && content.get('length') == 1) {
       content.objectAt(0).commit();
     }
-    this.commitChanges();
   }
 
-- change save button to this action 
-	Cookbook.recipeController.commitRecord
+- reload and see how changes do persist, but notice nothing going to server
 
-- reload, notice that properties aren't being sent
+- add to core_app.js
+
+	Cookbook.RECIPES_MEMBER_PATH = '/sc/recipes/%@';
+
+- explain %@
 
 - add to recipe.js
-  properties: ['name','prepTime','cookTime']
-	but sends everything, that's a bug
+  properties: ['name','prep_time','cook_time']
+	
+  commit: function() {
+    var url = Cookbook.RECIPES_MEMBER_PATH.fmt(this.get('guid'));
+    var parameters = {};
+    
+		// makes sure things are saved in the store, newRecord set to false, etc.
+    // note this is a pretty naive implementation; this commit shouldn't succeed
+		// unless the server call succeeds -- but this is good enough for tutorial purposes
+		sc_super(); 
+    
+    // we mainly have to encode this ourselves because Ajax.Request doesn't seem to handle nested objects very well
+    parameters = { recipe: $H(this.getPropertyData()).toJSON() };
+    
+    var opts = {
+      parameters: parameters,
+      onSuccess: function(transport) {
+        // this ensures that the guid gets updated to match what the server thinks, and generally acts to ensure
+        // the client and server are definitely in sync
+        this.updateAttributes(transport.responseJSON);
+      }.bind(this),
+      onFailure: function(transport) {
+        console.warn("Recipe commit failed due to: '%@'".fmt(transport.statusText));
+      }
+    };
 
-- BUG FIX/WORKAROUND FOR URL ENCODING STEP GOES HERE
+    Cookbook.executeAjax(url,'put',opts);
+  }
 
-- add cancel button
+- reload browser and see if it works
 
-	<%= button_view :label => "Cancel", 
-	                :action => 'Cookbook.recipeController.discardChanges', :bind => {
-	                    :enabled => "Cookbook.recipeController.hasChanges"
-	                  } %>
+- add cancel button whose action is "discardChanges"
 
 - reload and try it
 
-- then add this to cancel
+- try hitting escape to cancel a change, what happens?
+
+- now add this to cancel
   		                :cancel => true,
 
-- reload and try it
+- reload and try it with escape
 
 - type this at console
 	Cookbook.recipesController.newObject({ name: "Quiche Lorraine" })
@@ -285,11 +349,6 @@ add after sidebar:
 - why didn't it show up?  need to add this to recipes controller:
 
   canEditCollection: true
-
-- SWITCH TO ARRAY CONTROLLER EXPLANATION?
-	change main.js
-	switch to recipesController
-	"smart query"  "expensive SC.collection"
 
 - now let's add some buttons:
 
@@ -300,21 +359,10 @@ add after sidebar:
   		<%= button_view :label => "+", :action => 'Cookbook.recipesController.addObject' %>
     <% end -%>
 
-	- add to body.css
-	
-	#sidebar_toolbar {
-	  position: absolute;
-	  top:  95%;
-	  left:  0px;
-	  width: 200px;
-	  height: 5%;
-	}
-
 - add to recipe.js for default values
 
   init: function() {
     this.set('name','New Recipe');
-    this.set('dataSource',Cookbook.server); // since we are not using collections, this doesn't get set automatically
     sc_super();
   }
 
@@ -325,6 +373,8 @@ add after sidebar:
     this.pushObject(newObj);
     this.set('selection',[newObj]);
   }
+
+- reload browser, add object - why no save button?
 
 - add to recipeController
 
@@ -344,43 +394,124 @@ add after sidebar:
     return save;
   }.property('hasChanges','content*newRecord')
 
+- talk about computed properties and chained observers
+
 - change save button to bind to "Cookbook.recipeController.saveable"
 
-- try saving, check Rails server log
+- reload browser, try saving, check Rails server log
 
-- add to application.rb
+- need auth token
 
-  def auth_token
-    respond_to do |wants|
-      wants.js do
-        if protect_against_forgery?
-          render :text => "var SC = SC || {};  
-            SC.RAILS_AUTH_TOKEN_NAME = '#{request_forgery_protection_token}';
-            SC.RAILS_AUTH_TOKEN = '#{form_authenticity_token}';"
-        end
-      end
+- add recipe presetner index code for auth token
+
+    if protect_against_forgery?
+      response_hash[:rails_auth_token_name] = request_forgery_protection_token
+      response_hash[:rails_auth_token] = form_authenticity_token
     end
-  end
-
-- add to routes.rb
-
-  map.connect 'auth-token.js', :controller => 'application', :action => 'auth_token'
-
-- add page_javascript.js to english.lproj
-
-	<% content_for('page_javascript') do -%>
-	  <script src="/sc/auth-token.js" type="text/javascript"></script>
-	<% end -%>
 
 - reload browser
-
-- inspect source, you'll see the call to auth-token.js
-	- this is a good place to do login checks too
 
 - in console, type 
 	SC.RAILS_AUTH_TOKEN
 
-- now try to add, save
+- add to executeAjax method
+
+  opts.parameters = opts.parameters || {};
+
+  if (opts.method != 'get') {
+    opts.parameters[SC.RAILS_AUTH_TOKEN_NAME] = SC.RAILS_AUTH_TOKEN;
+  } 
+
+- now try to add and save
+
+- now refactor commit to handle updates; hint you will need to change the HTTP verb and the URL
+	based on the newRecord property
+
+- now add delete button that calls the destroyObject action on recipes controller. It should only
+be enabled if the recipesController "hasSelection" property is true
+
+
+- add to array controller
+
+  destroyObject: function() {
+    // step through each selected object and call its destruction method
+    // provide a callback so that if the deletion is successful, the 
+    // destroyed record is removed from our array
+    var sel = this.get('selection');
+    var idx = sel.length;
+    var obj;
+    
+    while (idx--) {
+      obj = sel[idx];
+      obj.destroy(function() {
+        this.removeObject(obj);
+      }.bind(this));
+    }
+  },
+
+- reload browser and try to destroy
+
+- now we need a custom view
+
+- at console type
+ script/generate migration AddSpiceToRecipes spice:integer
+
+- add spice: levels to recipes.yml
+	may also want to add a few more objects here
+	
+- type rake db:migrate db:fixtures:load
+
+- restart Rails server
+
+- add to body above spice text
+    <%= slider_view :minimum => 0, 
+                      :maximum => 100, 
+                      :bind => { :value => 'Cookbook.recipeController.spice' } %>
+                      
+- try savng the object, notice that the value flickers and changes back; why?
+
+- change recipe model:
+  properties: ['name','prep_time','cook_time','spice'],
+
+- now let's save we want to display a meaningful text value
+
+- type sc-gen view cookbook/spice_label SC.LabelView
+
+- add to spice_label.js
+
+  init: function () { sc_super(); this.render(); },
+   
+  render: function() {
+    var html = '';
+    var spice = this.get('content');
+
+    // in JavaScript, 0 evaluates to false
+    if (spice === undefined) {
+      html = "Unknown";
+    }
+
+    if (spice < 50) {
+      html = "Mild";
+    } else if (spice < 75) {
+      html = "Medium";
+    } else {
+      html = "Hot!";
+    }
+
+    this.set('innerHTML',html);
+  }.observes('content')
+
+- add to body.html below slider
+      <%= view :view => 'Cookbook.SpiceLabelView', 
+               :tag => 'span',
+               :bind => { :content => 'Cookbook.recipeController.spice' } %>
+
+- reload browser and play with slider
+
+TODO
+- save new records doesnt unmark em as changed
+	
+- rescue action in public for ActiveRecord::RecordNotFound
 
 - check proper invalid data response, is 403 the right code?
 - ajax spinner
@@ -394,13 +525,9 @@ add after sidebar:
 - custom view
 - app page title
 - don't allow nil selection, & allow multiple selection
-- Rails auth token
 - computed property for time display 
 - unit tests
 - reorder content (at least show it)
 - build tools
 - SC 1.0 API diffs
-- load screen
-
-- array controller instead of coll controller
-	http://groups.google.com/group/sproutcore/browse_thread/thread/aa557bc6e357f418/d88c301a040fd6ef?lnk=gst&q=collection#d88c301a040fd6ef
+- review OIB code

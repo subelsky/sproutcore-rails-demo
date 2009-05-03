@@ -2,7 +2,7 @@ require('core');
 
 Cookbook.Recipe = SC.Record.extend({
 
-  properties: ['name','prep_time','cook_time'],
+  properties: ['name','prep_time','cook_time','spice'],
   
   init: function() {
     this.set('name','New Recipe');
@@ -11,19 +11,23 @@ Cookbook.Recipe = SC.Record.extend({
   
   commit: function() {
     var url,method;
+    var parameters = {};
     
     if (this.get('newRecord')) {
-      url = Cookbook.RECIPES_COLLECTION_PATH;
       method = 'post';
+      url = Cookbook.RECIPES_COLLECTION_PATH;
     } else {
-      url = Cookbook.RECIPES_MEMBER_PATH.fmt(this.get('guid'));
       method = 'put';
+      url = Cookbook.RECIPES_MEMBER_PATH.fmt(this.get('guid'));
     }
 
-    sc_super(); // makes sure things are saved in the store, newRecord set to false, etc.
-    
+    // make sure things are saved in the store, newRecord set to false, etc.
+    // note this is a pretty naive implementation; this commit shouldn't succeed
+		// unless the server call succeeds -- but this is good enough for tutorial purposes
+    sc_super();
+
     // we mainly have to encode this ourselves because Ajax.Request doesn't seem to handle nested objects very well
-    var parameters = { recipe: $H(this.getPropertyData()).toJSON() };
+    parameters = { recipe: $H(this.getPropertyData()).toJSON() };
     
     var opts = {
       parameters: parameters,
@@ -31,6 +35,7 @@ Cookbook.Recipe = SC.Record.extend({
         // this ensures that the guid gets updated to match what the server thinks, and generally acts to ensure
         // the client and server are definitely in sync
         this.updateAttributes(transport.responseJSON);
+        this.set('newRecord',false); // bug, SC.Store should be doing this for us
       }.bind(this),
       onFailure: function(transport) {
         console.warn("Recipe commit failed due to: '%@'".fmt(transport.statusText));
@@ -40,13 +45,20 @@ Cookbook.Recipe = SC.Record.extend({
     Cookbook.executeAjax(url,method,opts);
   },
 
-  destroy: function() {
+  destroy: function(successFunction) {    
+    var url = Cookbook.RECIPES_MEMBER_PATH.fmt(this.get('guid'));
+    
     var opts = {
-      onSuccess: sc_super,
+      onSuccess: function(transport) {
+        if (successFunction) { successFunction(); }
+        sc_super();
+      }.bind(this),
       onFailure: function(transport) {
         console.warn("Recipe destroy failed due to: '%@'".fmt(transport.statusText));
       }
     };
+
+    Cookbook.executeAjax(url,'delete',opts);  
   },
 
   toQueryString: function() {

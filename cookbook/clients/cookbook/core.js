@@ -10,7 +10,7 @@ Cookbook = SC.Object.create({
   
   localMode: localMode,
 
-  server: SC.RailsServer.create({ prefix: ['Cookbook'] }),
+  server: SC.Server.create({ prefix: ['Cookbook'] }), // we only use this so we can get preload
 
   // When you are in development mode, this array will be populated with
   // any fixtures you create for testing and loaded automatically in your

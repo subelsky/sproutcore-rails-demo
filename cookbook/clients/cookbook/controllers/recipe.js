@@ -14,7 +14,7 @@ Cookbook.recipeController = SC.ObjectController.create({
   },
   
   saveable: function() {
-    
+    // object is saveable if it hasChanges OR if it's a new record
     if (this.get('hasChanges')) { 
       return true;
     }

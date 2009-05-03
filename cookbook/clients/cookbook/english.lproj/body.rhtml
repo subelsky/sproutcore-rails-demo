@@ -10,9 +10,12 @@
     <% end -%>
 
     <% view :sidebar_toolbar do -%>
-  		<%= button_view :label => "+", :action => 'Cookbook.recipesController.addObject' %>
-      
+  		<%= button_view :label => "+", :action => 'Cookbook.recipesController.addObject' %>      
+  		<%= button_view :label => "-", 
+  		                :action => 'Cookbook.recipesController.destroyObject',
+  		                :bind => { :enabled => "Cookbook.recipesController.hasSelection" } %>
     <% end -%>
+
   <% end -%>
 
   <% view :main do -%>
@@ -29,6 +32,17 @@
   	<div class='row'>
   	  <label>Cook Time</label>
       <%= text_field_view :bind => { :value => 'Cookbook.recipeController.cook_time' }, :size => 4 %>
+  	</div>
+
+  	<div class='row'>
+  	  <label>Spice Level</label>
+      <%= slider_view :minimum => 0, 
+                      :maximum => 100, 
+                      :bind => { :value => 'Cookbook.recipeController.spice' } %>
+                      
+      <%= view :view => 'Cookbook.SpiceLabelView', 
+               :tag => 'span',
+               :bind => { :content => 'Cookbook.recipeController.spice' } %>
   	</div>
 
   	<% view :toolbar do -%> 
