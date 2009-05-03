@@ -7,17 +7,17 @@ require('core') ;
 Cookbook.FIXTURES = Cookbook.FIXTURES.concat([
 
   { guid: 1,
-    name: "Peanut Butter and Jelly",
+    name: "Nachos",
     type: 'Recipe',
-    prep_time: 3,
-    cook_time: 0
+    prepTime: 3,
+    cookTime: 1
     },
   
   { guid: 2,
     name: "Vegetable Korma",
     type: 'Recipe',
-    prep_time: 45,
-    cook_time: 35
+    prepTime: 45,
+    cookTime: 35
     }
     
 ]);

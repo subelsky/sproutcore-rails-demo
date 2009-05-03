@@ -1,5 +1,7 @@
 ActionController::Routing::Routes.draw do |map|
+
   map.resources :recipes
+  map.connect 'auth-token.js', :controller => 'application', :action => 'auth_token'
 
   # The priority is based upon order of creation: first created -> highest priority.
 

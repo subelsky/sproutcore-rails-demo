@@ -1,9 +1,52 @@
 <% content_for('body') do %>
-  <% view :wrapper do -%>
-    <%= list_view :recipes, 
-        :row_height => 36,
-        :content_value_key => 'name', 
-        :bind => { :content => 'Cookbook.recipesController.arrangedObjects', 
-                   :selection => 'Cookbook.recipesController.selection' }  %>
+  <% view :sidebar do -%>
+		<% scroll_view :recipes_list_scroll do -%>
+      <%= list_view :recipes_list, 
+          :row_height => 36,
+          :content_value_key => 'name', 
+          :bind => { :content => 'Cookbook.recipesController.arrangedObjects', 
+                     :selection => 'Cookbook.recipesController.selection' }  %>
+
+    <% end -%>
+
+    <% view :sidebar_toolbar do -%>
+  		<%= button_view :label => "+", :action => 'Cookbook.recipesController.addObject' %>
+      
+    <% end -%>
   <% end -%>
+
+  <% view :main do -%>
+  	<div class='row'>
+  		<label>Name</label>
+      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.name' }, :size => 30 %>
+  	</div>
+
+  	<div class='row'>
+  	  <label>Prep Time</label>
+      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.prep_time' }, :size => 4 %>
+  	</div>
+
+  	<div class='row'>
+  	  <label>Cook Time</label>
+      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.cook_time' }, :size => 4 %>
+  	</div>
+
+  	<% view :toolbar do -%> 
+  		<%= button_view :label => "Save", 
+                			:default => true,
+                      :action => 'Cookbook.recipeController.commitRecord',
+                      :bind => {
+                        :enabled => "Cookbook.recipeController.saveable"
+                      }  %>
+
+  		<%= button_view :label => "Cancel", 
+  		                :cancel => true,
+  		                :action => 'Cookbook.recipeController.discardChanges', :bind => {
+                        :enabled => "Cookbook.recipeController.hasChanges"
+                      } %>
+
+  	<% end -%>
+
+  <% end -%>
+
 <% end %>

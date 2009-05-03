@@ -9,6 +9,7 @@
 // As you develop your application you will probably want to override this.
 // See comments for some pointers on what to do next.
 //
+
 function main() {
 
   // Step 1: Load Your Model Data
@@ -17,9 +18,10 @@ function main() {
   // when you are ready to pull data from your server.
 
   if (Cookbook.localMode) {
-    Cookbook.server.preload(Cookbook.FIXTURES) ;
+    Cookbook.server.preload(Cookbook.FIXTURES);
+    Cookbook.startup();
   } else {
-    Cookbook.server.listFor({ recordType: Cookbook.Recipe });
+    Cookbook.fetchRecipes(Cookbook.startup);
   }
 
   // TODO: refresh() any collections you have created to get their records.
@@ -31,16 +33,4 @@ function main() {
   // need to show the app in the first place, to speed things up.
   SC.page.awake() ;
 
-  // Step 3. Set the content property on your primary controller.
-  // This will make your app come alive!
-
-  // works with fixtures
-  var recipes = Cookbook.Recipe.collection({ orderBy: ['name'] });
-  Cookbook.recipesController.set('content',recipes);
-  recipes.refresh();
-
-  // works with REST
-  // var recipes = Cookbook.Recipe.findAll();
-  // Cookbook.recipesController.set('content',recipes);
-  
-} ;
+}

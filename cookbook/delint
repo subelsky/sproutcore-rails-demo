@@ -1,0 +1,1 @@
+find `pwd`/clients/* -name "*.js" -print -exec java org.mozilla.javascript.tools.shell.Main /usr/local/bin/jslint.js {} \;
