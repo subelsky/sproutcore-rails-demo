@@ -116,7 +116,8 @@ elements should be drawn, so if you don't provide positioning information, Sprou
 draw your elements.  It's best to use absolute positioning for any kind of DHTML. To save time, I've 
 created all of the CSS we need, though you should feel free to tweak it as needed.
 
-Replace the english.lproj/body.css file with the supplied copy.
+Replace the english.lproj/body.css file with the copy here:
+http://sproutcore-rails.s3.amazonaws.com/body.css
 
 Now reload and you should see your fixtures displayed.  Be sure to click around and notice all the behavior
 you get for free just by subclassing an array controller.
@@ -193,7 +194,7 @@ Add the following code body.rhtml, after the sidebar:
 Reload browser and click around.  You should see the detail form updating with new values as new 
 recipes are selected.
 
-Let's make those time fiels shorter.  Append :size => 4 to the last two text field helpers.
+Let's make those time fields shorter.  Append :size => 4 to the last two text field helpers.
 
 GETTING THE RAILS APP UP AND RUNNING
 
@@ -224,12 +225,8 @@ The resulting hash should look like this:
 	>> Recipe.find(:first).to_hash
 	=> {:guid=>953125641, :type=>"Recipe", "name"=>"Macaroni and Cheese", "prep_time"=>5, "cook_time"=>10}
 
-Raise your hand if you need help constructing the function.
-
 Now we need a way to gather up all of the recipes in the database and represent them in a useful hash 
 for the SproutCore client.  I prefer to use Presenters for this kind of thing.
-
-Raise your hand if you are not familiar with presenters so I can explain in more detail.
 
 At the console, type:
 	mkdir app/presenters
@@ -251,10 +248,6 @@ Create the file app/presenters/recipe_presenter.rb:
 	    @recipes ||= Recipe.find(:all)
 	  end
 
-	  def recipe_ids
-	    @recipe_ids ||= recipes.collect { |r| r.id }
-	  end
-  
 	  def records
 	    @records ||= recipes.map { |recipe| recipe.to_hash }
 	  end
@@ -280,7 +273,8 @@ Visit http://localhost:3000/recipes.  You should see a JSON representation of al
 
 CONNECTING THE APPS
 
-First, it's useful to be able to load the SproutCore app as a standalone system, like we've been doing.
+First, it's still useful to be able to load the SproutCore app as a standalone system, like we've been doing,
+so let's preserve this capability.
 
 Add this line to the Cookbook object in core.js
 	localMode: window.location.hash === '#development';
@@ -304,8 +298,7 @@ I thought it would be better to write this part for you, since it is tricky to g
 the main focus of the course (also, this kind of code will change a lot in SproutCore 1.0 and should
 be easier to write).
 
-Raise your hand at this point, so we can review the below code together.  Paste it into core_app.js once
-you feel like you understand it.
+Paste this code into core_app.js once you feel like you understand it.
 
 Cookbook.RECIPES_COLLECTION_PATH = '/sc/recipes';
 
@@ -382,15 +375,19 @@ and Rails log files to see if you can figure out what's going wrong.
 It's because we don't have a mechanism in place to distinguish requests that are meant for the SproutCore
 development server from those meant for the Rails server.  There are many ways to do this, but here's the
 simplest.  Add this line to sc-config:
+
 	proxy '/sc', :url => "", :to => 'localhost:3000'
 
 Now restart your SproutCore server, reload the browser, and check the logs again.  All should be well.
 
 In the browser console type:
+
 	Cookbook.Recipe.findAll().inspect()
 	Cookbook.Recipe.find(####).get('name')
 	Cookbook.Recipe.find(####).get('name')
 
+You should see your Rails fixture data, now loaded into the SproutCore local store!
+ 
 PERSISTING CHANGES TO THE SERVER
 
 Add the following view code, right after the last row of the form:
@@ -402,6 +399,7 @@ Add the following view code, right after the last row of the form:
   	<% end -%>
 
 Add the following lines to the recipe.js controller:
+
   commitChangesImmediately: false
 
   commitRecord: function() {
@@ -413,8 +411,6 @@ Add the following lines to the recipe.js controller:
   }
 
 Reload and see how changes persist to the local store, but notice that nothing is going to the server yet.
-
-Raise your hand so we can talk about what the above code is doing.
 
 Notice that save button always enabled.  Buttons have an "enabled" property that determines whether they
 are clickable. Bind the enabled property of the button to "Cookbook.recipeController.hasChanges".
@@ -455,8 +451,7 @@ Add the following code to recipe.js:
 Reload browser and see if it works.  You should be able to save changes, reload the browser, and
 see your changes persisted.
 
-Raise your hand so we can discuss the code and make sure you understand it.  If you are new to
-JavaScript, pay special attention to the "bind(this)" trick.
+If you are new to JavaScript, pay special attention to the "bind(this)" trick.
 
 Now add a cancel button similiar to the save button, but with the action "discardChanges".
 
@@ -464,11 +459,12 @@ Reload and try out the cancel button.
 
 What happens when you make a change and then hit escape, before saving?  Nothing?
 
-Add ":cancel => true" to the button helper, then try again.  Pretty cool eh?
+Add ":cancel => true" to the button helper, then try again.  Pretty cool, eh?
 
 ADDING NEW OBJECTS
 
 Type this in the browser console:
+
 	Cookbook.recipesController.newObject({ name: "Quiche Lorraine" })
 
 Why didn't it show up?  You need to add this line to the recipes controller:
@@ -516,8 +512,6 @@ Add a computed property to recipeController:
     return save;
   }.property('hasChanges','content*newRecord')
 
-Raise your hand so I can come over and we can talk about computed properties and chained observers.
-
 Bind the save button's enabled property to "Cookbook.recipeController.saveable".
 
 Reload browser and make sure new objects are saveable.
@@ -529,7 +523,7 @@ Let's setup a default value for Recipe records.  Add this function to the Recipe
     sc_super();
   }
 
-"sc_super" is exactly like Ruby's "super" method.  Raise your hand if you need more information.
+"sc_super" is exactly like Ruby's "super" method.
 
 ADDING A CREATE ACTION TO THE RAILS APP
 
@@ -575,7 +569,7 @@ Now reload the browser. In the browser console, verify that your global constant
 
 Raise your hand if you are confused :-)
 
-Add the followning to the executeAjax method
+Add the following to the executeAjax method:
 
   opts.parameters = opts.parameters || {};
 
@@ -587,21 +581,22 @@ Now try to save a newly-created object.  All should be well.
 
 Notice that the save button is still enabled. I'm not sure if this is a SproutCore bug, or an
 error in my understanding but here's how to fix it. In the Recipe commit method, set "newRecord"
-to false (using KVC).
+to false (using KVC) to fix this.
 
 PERSISTING UPDATES
 
 To make changes to existing records, we'll need to do some more work.  Refactor the commit method 
-to handle updates.  As a hint, this is a REST-style API, so you should only need to change the 
-HTTP verb and the URL.  Raise your hand if you need help.
+to handle updates.  
+
+As a hint, this is a REST-style API, so you should only need to change the HTTP verb and the URL.
 
 Now add an update action to the controller.  Use the create action for inspiration.
 
 For bonus points, detect update errors and return an appropriate error message to the user.
 
-Raise your hand if you need help getting this to work.
-
 At this point you should be able to create and update recipes with ease.
+
+Raise your hand if you need help getting this to work.
 
 PERSISTING DELETES
 
@@ -702,10 +697,10 @@ this might be.
 
 
 
-SproutCore records hae no schema, so we need to tell the Recipe model about its new property that
+SproutCore records have no schema, so we need to tell the Recipe model about its new property that
 should be sent back to the server  Add "spice" to the list of properties, reload the browser, and try again.
 
-Now let's a meaningful text value to accompany the slider.  We want to tweak the behavior of what comes 
+Now let's add a meaningful text value to accompany the slider.  We want to tweak the behavior of what comes 
 with SproutCore, so we'll make our custom view based on the SC.LabelView class. 
 
 At the SproutCore project command line, type:
@@ -735,8 +730,7 @@ Add the following lines to spice_label.js:
     this.set('innerHTML',html);
   }.observes('content')
 
-Raise your hand so we can discuss this code to make sure you understand it.  What's
-the difference between "==" and "==="?
+What's the difference between "==" and "==="?
 
 Add to body.html below the slider:
       <%= view :view => 'Cookbook.SpiceLabelView', 
@@ -776,7 +770,7 @@ your spice label.
     }
   }
 
-Raise your hand so we can discuss this code.  Why aren't we using KVC on the "_isMouseDown" property?
+Why aren't we using KVC on the "_isMouseDown" property?
 
 UNIT TESTING
 
