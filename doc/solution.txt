@@ -2,21 +2,34 @@ TEST PREREQUISITES
 
 Firefox with Firebug or Safari with developer mode (or webkit) recommended
 
+Make sure you can run these commands at your command line.  The recommended results are commented out.
+
 rails -v # 2.3.2
 sproutcore -v # 0.9.23
-sudo gem install sqlite3-ruby --no-ri --no-rdoc
+
+You also need some kind of ActiveRecord adapter for your chosen database.  sqlite3-ruby is
+probably the easiest (and the Rails default), so you should be able to install that 
+gem without problems.
+
+CREATING THE RAILS PROJECT
+
+Type these commands at the command line:
 
 rails cookbook
 cd cookbook
 rake db:create:all
 script/server
-visit http://localhost:3000/
+In your browser check this URL http://localhost:3000/
+
+CREATING THE SPROUTCORE PROJECT
+
+Type these commands at the command line:
 
 sc-init cookbook
 cd cookbook
 sc-server
 
-in browser check http://localhost:4020/cookbook
+In your browser check this URL: http://localhost:4020/cookbook
 
 GETTING THE SPROUTCORE APP UP AND RUNNING
 
@@ -39,8 +52,9 @@ To load the fixtures into SproutCore's local datastore during startup, add the f
 	
   Cookbook.server.preload(Cookbook.FIXTURES);
 
-Reload http://localhost:4020/cookbook (hereafter referred to as "the app").  Open a Firebug or Webkit console
-and type the following commands:
+Reload http://localhost:4020/cookbook (hereafter referred to as "the app").  
+
+Open a Firebug or Webkit console and type the following commands:
 
 Cookbook.Recipe.find(1)
 Cookbook.Recipe.find(2)
@@ -63,8 +77,8 @@ Inspect the newly-generated files.  Now we need to give this ArrayController an 
 For now all we have to do is retrieve an arra of all the fixture objects and set the controller's content 
 property to that array.
 
-I like to put this kind of application code in its own file.  Create a file in clients/cookbook called "core_app.js" and 
-add these lines:
+I like to put this kind of application code in its own file.  Create a file in clients/cookbook called 
+"core_app.js" and add these lines:
 
 require('core');
 
