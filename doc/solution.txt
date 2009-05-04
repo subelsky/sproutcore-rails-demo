@@ -398,7 +398,27 @@ in body.rhtml after sidebar add:
 
 - change save button to bind to "Cookbook.recipeController.saveable"
 
-- reload browser, try saving, check Rails server log
+- reload browser, check button, but still need create action
+
+  before_filter :decode_recipe, :only => [:create,:update]
+
+  def create
+		# this is just SproutCore's temporary guid; we'll return the persistent, real guid if this is successful
+    @recipe_params.delete('guid') 
+    recipe = Recipe.create!(@recipe_params)
+    render :json => recipe.to_hash
+  rescue ActiveRecord::RecordInvalid
+    render :text => "Unable to create recipe due to #{$!.message}", :status => 403
+  end
+
+  private
+  
+  def decode_recipe
+    @recipe_params = ActiveSupport::JSON.decode(params[:recipe])
+    @recipe_params.delete('guid') # we use the URL id which is the same as the guid
+  end
+
+- now try saving, check Rails server log
 
 - need auth token
 
@@ -424,12 +444,27 @@ in body.rhtml after sidebar add:
 
 - now try to add and save
 
+- notice that save button still enabled, need to add this to commit
+   this.set('newRecord',false); // bug, SC.Store should be doing this for us
+
 - now refactor commit to handle updates; hint you will need to change the HTTP verb and the URL
 	based on the newRecord property
 
-- now add delete button that calls the destroyObject action on recipes controller. It should only
-be enabled if the recipesController "hasSelection" property is true
+- add update action
 
+  def update    
+    recipe = Recipe.find(params[:id])
+
+    if recipe.update_attributes(@recipe_params)
+      render :json => recipe.to_hash
+    else
+      render :text => "Unable to update recipe due to #{recipe.errors.full_messages.join(". ")}", :status => 403
+    end
+  end
+
+- now reload browser and try updating existing records
+
+- now add delete button that calls the destroyObject action on recipes controller. It should only be enabled if the recipesController "hasSelection" property is true
 
 - add to array controller
 
@@ -448,6 +483,31 @@ be enabled if the recipesController "hasSelection" property is true
       }.bind(this));
     }
   },
+
+- add to recipe model
+
+  destroy: function(successFunction) {    
+    var url = Cookbook.RECIPES_MEMBER_PATH.fmt(this.get('guid'));
+    
+    var opts = {
+      onSuccess: function(transport) {
+        if (successFunction) { successFunction(); }
+        sc_super();
+      }.bind(this),
+      onFailure: function(transport) {
+        console.warn("Recipe destroy failed due to: '%@'".fmt(transport.statusText));
+      }
+    };
+
+    Cookbook.executeAjax(url,'delete',opts);  
+  }
+
+- add to recipes controller
+
+  def destroy
+    Recipe.destroy(params[:id])
+    render :nothing => true
+  end
 
 - reload browser and try to destroy
 
@@ -508,26 +568,30 @@ be enabled if the recipesController "hasSelection" property is true
 
 - reload browser and play with slider
 
-TODO
-- save new records doesnt unmark em as changed
+- type sc-build and investigate public dir
+
+EXERCISES
+	- setup a computed property on recipe that shows a label whether the recipe is "elaborate" or not
+		based on the total cookng time
+		
+	- have executeAjax increment a value for each reqeust that gets decremented on completion,
+		displaying an ajax spinner while that value is greater than 0
+
+	- change arranged objects based on a toggle button
+
+	- add an automatic refresh that asks for newly-created recipes from the server
 	
-- rescue action in public for ActiveRecord::RecordNotFound
-
-- check proper invalid data response, is 403 the right code?
-- ajax spinner
-- custom view for stale/pending etc
-
-- flash display?
-- error handling?
-- validation crap?
-- sorting?
-- hasMany ingredients
-- custom view
-- app page title
-- don't allow nil selection, & allow multiple selection
-- computed property for time display 
-- unit tests
-- reorder content (at least show it)
-- build tools
+LAST 30 MINUTES
 - SC 1.0 API diffs
 - review OIB code
+
+TODO
+- check proper invalid data response, is 403 the right code?
+- custom view for stale/pending etc
+- mouseUp/mouseDown
+- app page title
+- investigate HTML5 store?
+- write unit tests for recipe
+
+For futher refinement
+	- rescue action in public for ActiveRecord::RecordNotFound
