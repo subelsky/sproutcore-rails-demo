@@ -71,6 +71,4 @@ input {
   padding: 10px 0px;
 }
 
-.mild-spice { color: black; background-red: transparent; }
-.medium-spice { color: white; background-color: red; }
-.hot-spice { color: white; background-color: orange; }
+.caliente { color: white; background-color: red; }

@@ -12,6 +12,8 @@
 
 function main() {
 
+  document.title = 'Cookbook';
+
   // Step 1: Load Your Model Data
   // The default code here will load the fixtures you have defined.
   // Comment out the preload line and add something to refresh from the server

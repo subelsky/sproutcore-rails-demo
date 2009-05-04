@@ -1,15 +1,17 @@
-<% # ========================================================================
-   # Cookbook.Recipe Unit Test
-   # ========================================================================
-%>
 <% content_for('final') do %>
 
 <script>
 
 Test.context("Cookbook.Recipe",{
 
-  "TODO: Add your own tests here": function() {
-    true.shouldEqual(true) ;
+  setup: function() {
+    Cookbook.server.preload(Cookbook.FIXTURES); // in a real app you'd want to have separate fixtures for unit tests
+    this.recipe = Cookbook.Recipe.find('1');
+  },
+  
+  "New recipes should have default values set": function() {
+    var newRecipe = Cookbook.Recipe.newRecord();
+    assertEqual("New Recipe",newRecipe.get('name'));
   }
 
 }) ;

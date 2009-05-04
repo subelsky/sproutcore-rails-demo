@@ -1,4 +1,6 @@
-NOTE: Firefox with Firebug or webkit inspector
+TEST PREREQUISITES
+
+Firefox with Firebug or Safari with developer mode (or webkit) recommended
 
 rails -v # 2.3.2
 sproutcore -v # 0.9.23
@@ -10,9 +12,183 @@ rake db:create:all
 script/server
 visit http://localhost:3000/
 
-script/generate resource recipe name:string prep_time:integer cook_time:integer
+sc-init cookbook
+cd cookbook
+sc-server
 
-replace recipes.yml with
+in browser check http://localhost:4020/cookbook
+
+GETTING THE SPROUTCORE APP UP AND RUNNING
+
+In the SproutCore project directory, type:
+	sc-gen model cookbook/recipe
+
+Take a moment to inspect all the files that were generated.  Now replace the data in fixtures/recipe.js with
+recipe data.  These are simple JavaScript objects expressed in literal notation.  Here's an example:
+
+  { guid: 1,
+    name: "Nachos",
+    type: 'Recipe',
+    prep_time: 3,
+    cook_time: 1
+    }
+
+Add at least three fixtures, making sure each has a unique guid.
+
+To load the fixtures into SproutCore's local datastore during startup, add the following to main.js:
+	
+  Cookbook.server.preload(Cookbook.FIXTURES);
+
+Reload http://localhost:4020/cookbook (hereafter referred to as "the app").  Open a Firebug or Webkit console
+and type the following commands:
+
+Cookbook.Recipe.find(1)
+Cookbook.Recipe.find(2)
+
+(you may need to append .inspect() to these commands to see something meaningful)
+
+Cookbook.Recipe.find(1).get('name')
+Cookbook.Recipe.find(2).get('name')
+
+Now that we can load data into the store, let's start showing it to the user.  The SproutCore v0.9 API uses
+Ruby helpers in ERB format to generate view code (in SproutCore v1.0 this will be Ruby instead of JavaScript, 
+but the code will serve a similar purpose).
+
+First we need to create a controller to represent the list of objects we're currently displaying. In the SproutCore 
+project, please type:
+
+	sc-gen controller cookbook/recipes SC.ArrayController
+
+Inspect the newly-generated files.  Now we need to give this ArrayController an array of objects to display.
+For now all we have to do is retrieve an arra of all the fixture objects and set the controller's content 
+property to that array.
+
+I like to put this kind of application code in its own file.  Create a file in clients/cookbook called "core_app.js" and 
+add these lines:
+
+require('core');
+
+Cookbook.startup = function() {
+  var recipes = Cookbook.Recipe.findAll();
+  Cookbook.recipesController.set('content',recipes);
+};
+
+"require" is interpreted by SproutCore build tools and is not sent to the client.
+
+To finish wiring up our controller, add the following line to main.js:
+
+    Cookbook.startup();
+
+Now reload browser and type in the console:
+	Cookbook.recipesController.get('arrangedObjects')
+
+The last thing we need to is the view. Replace the contents of body.rhtml with this:
+
+	<% content_for('body') do %>
+  	<% view :sidebar do -%>
+			<% scroll_view :recipes_list_scroll do -%>
+      	<%= list_view :recipes_list, 
+          						:row_height => 36,
+          						:content_value_key => 'name', 
+          						:bind => { :content => 'Cookbook.recipesController.arrangedObjects', 
+                     						 :selection => 'Cookbook.recipesController.selection' }  %>
+
+    	<% end -%>
+		<% end -%>
+	<% end ->
+
+Now reload the app.  Nothing seems to be displayed - SproutCore makes extensive use of CSS to decide what 
+elements should be drawn, so if you don't provide positioning information, SproutCore doesn't know how to 
+draw your elements.  It's best to use absolute positioning for any kind of DHTML. To save time, I've 
+created all of the CSS we need, though you should feel free to tweak it as needed.
+
+Replace the english.lproj/body.css file with the supplied copy.
+
+Now reload and you should see your fixtures displayed.  Be sure to click around and notice all the behavior
+you get for free just by subclassing an array controller.
+
+Use the Firebug or Webkit inspector to see the DOM elements and associated JavaScript code 
+created by the Ruby helpers.
+
+Try typing this at the console:
+
+	Cookbook.recipesController.get('selection')
+
+That property always reflects the controller's currently-selected object.
+
+Be sure try selecting multiple objects.
+
+Try typing this at the console:
+	Cookbook.recipesController.get('content').objectAt(0).set('name','Railsconf')
+  Cookbook.Recipe.find(1).set('name','2009')
+
+Notice the effect your changes have on the data, and how the views are automatically updated. 
+Also notice the different ways of retrieving an object.  You could also find an object like so:
+
+	Cookbook.Recipe.find({ name:"Name of one of your fixtures" })
+
+When you've made it this far, raise your hand so I can come and review all the code so far to
+make sure you understand the concepts.  Don't let me leave 'till you feel like you understand
+Key-Value Coding, Key-Value Observation, and Bindings.
+
+ADDING A DETAIL VIEW
+
+First of all let's simplify our edge cases by restricting the behavior of our new controller. Add 
+the following lines to recipes.js:
+
+  allowsEmptySelection: false,
+  allowsMultipleSelection: false
+
+Reload and test the effects of these changes.
+
+At the command line, type:
+	sc-gen controller cookbook/recipe SC.ObjectController
+
+This controller proxies access to one individual object, in this case whatever recipe is selected.
+
+To connect the object controller to the master controller, add this line to the recipe.js controller file:
+  contentBinding: 'Cookbook.recipesController.selection'
+
+Reload your browser and type at the console:
+	Cookbook.recipeController.get('content')
+
+Note that you are still getting back an array even though you would expect the object itself.  There's
+a way to configure the recipesController to not return an array for its selection property but it's
+buggy in this version of SproutCore. For now, we'll work around it.
+
+Add the following code body.rhtml, after the sidebar:
+
+  <% view :main do -%>
+  	<div class='row'>
+  		<label>Name</label>
+      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.name' } %>
+  	</div>
+
+  	<div class='row'>
+  	  <label>Prep Time</label>
+      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.prep_time' } %>
+  	</div>
+
+  	<div class='row'>
+  	  <label>Cook Time</label>
+      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.cook_time' } %>
+  	</div>
+
+  <% end -%>
+
+Reload browser and click around.  You should see the detail form updating with new values as new 
+recipes are selected.
+
+Let's make those time fiels shorter.  Append :size => 4 to the last two text field helpers.
+
+GETTING THE RAILS APP UP AND RUNNING
+
+In the Rails project, type:
+	script/generate resource recipe name:string prep_time:integer cook_time:integer
+
+Replace the generated recipes.yml with something like the below.  The data should be different
+than what you used for the SproutCore fixtures, otherwise you'll get confused.
+
   one:
     name: "Macaroni and Cheese"
     prep_time: 5
@@ -23,17 +199,28 @@ replace recipes.yml with
     prep_time: 30
     cook_time: 2400
 
-rake db:create db:migrate db:fixtures:load   
+Now load up the database:
+	rake db:create db:migrate db:fixtures:load   
 
-add to recipe.rb model
+We need a way to represent Recipe objects that will make sense to SproutCore.  Write a "to_hash" method that
+returns a hash of recipe attributes, but that uses "guid" instead of "id" and includes the property :type => Recipe.
 
-  def to_hash
-    attributes.except('id','updated_at','created_at').merge(:guid => self[:id], :type => "Recipe")
-  end
+The resulting hash should look like this:
 
-mkdir app/presenters
+	>> Recipe.find(:first).to_hash
+	=> {:guid=>953125641, :type=>"Recipe", "name"=>"Macaroni and Cheese", "prep_time"=>5, "cook_time"=>10}
 
-create app/presenters/recipe_presenter.rb
+Raise your hand if you need help constructing the function.
+
+Now we need a way to gather up all of the recipes in the database and represent them in a useful hash 
+for the SproutCore client.  I prefer to use Presenters for this kind of thing.
+
+Raise your hand if you are not familiar with presenters so I can explain in more detail.
+
+At the console, type:
+	mkdir app/presenters
+
+Create the file app/presenters/recipe_presenter.rb:
 
 	class RecipePresenter
   
@@ -60,70 +247,51 @@ create app/presenters/recipe_presenter.rb
     
 	end
 
-in the config block for environment.rb
+To make sure Rails loads this object, add this line to the config block in environment.rb:
 	  config.load_paths << "#{RAILS_ROOT}/app/presenters"
 
-script/console
-	type RecipePresenter.new.to_hash
+Make sure you understand what this class is doing.  I recommend opening up the Rails console and typing:
+	RecipePresenter.new.to_hash
 	
-Add to recipes controller:
+Finally, wire up the index method of the recipes controller to return the RecipePresenter hash as JSON:
 
   def index
     response_hash = RecipePresenter.new.to_hash
     render :json => response_hash
   end
 
-restart server
+Start or restart your Rails server, since we've made changes to the schema.
 
-visit http://localhost:3000/recipes
+Visit http://localhost:3000/recipes.  You should see a JSON representation of all recipes.
 
-sc-init cookbook
-cd cookbook
-sc-server
+CONNECTING THE APPS
 
-in browser check http://localhost:4020/cookbook
+First, it's useful to be able to load the SproutCore app as a standalone system, like we've been doing.
 
-sc-gen model cookbook/recipe
-
-add to fixtures/recipe.js
-
-  { guid: 1,
-    name: "Nachos",
-    type: 'Recipe',
-    prep_time: 3,
-    cook_time: 1
-    },
-  
-  { guid: 2,
-    name: "Vegetable Korma",
-    type: 'Recipe',
-    prep_time: 45,
-    cook_time: 35
-    }
-
-add to main.js
-	
-  Cookbook.server.preload(Cookbook.FIXTURES) ;
-
-reload browser
-Cookbook.Recipe.find(1).get('name')
-Cookbook.Recipe.find(2).get('name')
-
-- now let's hook it up to server
-
-add to core.js
+Add this line to the Cookbook object in core.js
 	localMode: window.location.hash === '#development';
 
-change main.js
+Change main.js to use this value:
 
   if (Cookbook.localMode) {
     Cookbook.server.preload(Cookbook.FIXTURES);
 		Cookbook.startup();
   } else {
-    Cookbook.fetchRecipes(Cookbook.startup);		
+    Cookbook.fetchRecipes(Cookbook.startup);
   }
 
-create core_app.js, add this:
+Note that functions are first-class objects in JavaScript.  Raise your hand if you don't understand the above snippet
+of code so I can explain further.
+
+Visit the URL http://localhost:4020/cookbook#development and notice that the app loads data from fixtures.
+
+We now have to write the code that triggers the server's index action.  Since we only have three hours,
+I thought it would be better to write this part for you, since it is tricky to get right and is not
+the main focus of the course (also, this kind of code will change a lot in SproutCore 1.0 and should
+be easier to write).
+
+Raise your hand at this point, so we can review the below code together.  Paste it into core_app.js once
+you feel like you understand it.
 
 Cookbook.RECIPES_COLLECTION_PATH = '/sc/recipes';
 
@@ -144,10 +312,6 @@ Cookbook.fetchRecipes = function(successFunction) {
   Cookbook.executeAjax(Cookbook.RECIPES_COLLECTION_PATH,'get', opts);
 };
 
-Cookbook.startup = function() {
-  var recipes = Cookbook.Recipe.findAll();
-  Cookbook.recipesController.set('content',recipes);
-};
 
 Cookbook.parseFetchResponse = function(transport) {
   var response = transport.responseJSON;
@@ -173,108 +337,49 @@ Cookbook.executeAjax = function(url,method,opts) {
   }
 };
 
-- reload browser and try, notice nothing happens -- check merb log
+Visit http://localhost:4020/cookbook.  The data doesn't seem to be loading. Check the Merb log file 
+and Rails log files to see if you can figure out what's going wrong.
 
-add to sc-config
+
+
+
+
+
+
+
+
+
+
+
+
+<< No peeking >>
+
+
+
+
+
+
+
+
+
+
+
+
+It's because we don't have a mechanism in place to distinguish requests that are meant for the SproutCore
+development server from those meant for the Rails server.  There are many ways to do this, but here's the
+simplest.  Add this line to sc-config:
 	proxy '/sc', :url => "", :to => 'localhost:3000'
 
-restart sc-server
+Now restart your SproutCore server, reload the browser, and check the logs again.  All should be well.
 
-reload browser, then check the SC logs and the Rails server logs
+In the browser console type:
+	Cookbook.Recipe.findAll().inspect()
+	Cookbook.Recipe.find(####).get('name')
+	Cookbook.Recipe.find(####).get('name')
 
-then at the console type
-Cookbook.Recipe.findAll().inspect()
-Cookbook.Recipe.find(####).get('name')
-Cookbook.Recipe.find(####).get('name')
+PERSISTING CHANGES TO THE SERVER
 
-sc-gen controller cookbook/recipes SC.ArrayController
-
-talk about collection controller vs array controller vs obj controller
-
-- reload browser then type
-Cookbook.recipesController.get('arrangedObjects').inspect()
-
-change body.html
-	<% content_for('body') do %>
-  	<% view :sidebar do -%>
-			<% scroll_view :recipes_list_scroll do -%>
-      	<%= list_view :recipes_list, 
-          						:row_height => 36,
-          						:content_value_key => 'name', 
-          						:bind => { :content => 'Cookbook.recipesController.arrangedObjects', 
-                     						 :selection => 'Cookbook.recipesController.selection' }  %>
-
-    	<% end -%>
-		<% end -%>
-	<% end ->
-
-reload browser
-  nothing displayed WTF?
-  talk about absolute positioning
-
-paste in body.css
-	<snip>
-	
-reload browser in localMode and normal mode and make sure list displays
-	- select an objects then type
-	Cookbook.recipesController.get('selection').inspect()
-
-  - select multiple objects
-  
-- talk about row_height, content_value_key, bind
-
-then add to recipes.js
-  allowsEmptySelection: false,
-  allowsMultipleSelection: false
-
-reload browser and test effects
-
-sc-gen controller cookbook/recipe SC.ObjectController
-
-add to recipe.js controller
-  contentBinding: 'Cookbook.recipesController.selection'
-
-reload browser and type
-	Cookbook.recipeController.get('content')
-
-talk about bug with not being able to return a singular object
-
-in body.rhtml after sidebar add:
-
-  <% view :main do -%>
-  	<div class='row'>
-  		<label>Name</label>
-      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.name' } %>
-  	</div>
-
-  	<div class='row'>
-  	  <label>Prep Time</label>
-      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.prep_time' } %>
-  	</div>
-
-  	<div class='row'>
-  	  <label>Cook Time</label>
-      <%= text_field_view :bind => { :value => 'Cookbook.recipeController.cook_time' } %>
-  	</div>
-
-  <% end -%>
-
-- reload browser, click around
-- change the name property, see it change "real time"
-	type Cookbook.recipeController.get('content').objectAt(0).set('name','Railsconf')
-	explain objectAt and KVO
-
-- notice that save button always enabled; add
-	:bind => { :enabled => "Cookbook.recipeController.hasChanges" }	
-
-- append :size => 4 to helpers
-
-- add to recipe.js controller
-  commitChangesImmediately: false
-
-- reload and note how changes don't persist when click away
-
-- then add inside main view:
+Add the following view code, right after the last row of the form:
 
   	<% view :toolbar do -%> 
   		<%= button_view :label => "Save", 
@@ -282,7 +387,8 @@ in body.rhtml after sidebar add:
                       :action => 'Cookbook.recipeController.commitRecord' %>
   	<% end -%>
 
-- add this to recipe controller
+Add the following lines to the recipe.js controller:
+  commitChangesImmediately: false
 
   commitRecord: function() {
     this.commitChanges();
@@ -292,19 +398,21 @@ in body.rhtml after sidebar add:
     }
   }
 
-- reload and see how changes do persist, but notice nothing going to server
+Reload and see how changes persist to the local store, but notice that nothing is going to the server yet.
 
-- add to core_app.js
+Raise your hand so we can talk about what the above code is doing.
 
-	Cookbook.RECIPES_MEMBER_PATH = '/sc/recipes/%@';
+Notice that save button always enabled.  Buttons have an "enabled" property that determines whether they
+are clickable. Bind the enabled property of the button to "Cookbook.recipeController.hasChanges".
 
-- explain %@
+Now we need to enhance the commit function on Recipe records. 
 
-- add to recipe.js
+Add the following code to recipe.js:
+
   properties: ['name','prep_time','cook_time']
 	
   commit: function() {
-    var url = Cookbook.RECIPES_MEMBER_PATH.fmt(this.get('guid'));
+    var url = SC.RECIPES_COLLECTION_PATH;
     var parameters = {};
     
 		// makes sure things are saved in the store, newRecord set to false, etc.
@@ -330,53 +438,53 @@ in body.rhtml after sidebar add:
     Cookbook.executeAjax(url,'put',opts);
   }
 
-- reload browser and see if it works
+Reload browser and see if it works.  You should be able to save changes, reload the browser, and
+see your changes persisted.
 
-- add cancel button whose action is "discardChanges"
+Raise your hand so we can discuss the code and make sure you understand it.  If you are new to
+JavaScript, pay special attention to the "bind(this)" trick.
 
-- reload and try it
+Now add a cancel button similiar to the save button, but with the action "discardChanges".
 
-- try hitting escape to cancel a change, what happens?
+Reload and try out the cancel button.
 
-- now add this to cancel
-  		                :cancel => true,
+What happens when you make a change and then hit escape, before saving?  Nothing?
 
-- reload and try it with escape
+Add ":cancel => true" to the button helper, then try again.  Pretty cool eh?
 
-- type this at console
+ADDING NEW OBJECTS
+
+Type this in the browser console:
 	Cookbook.recipesController.newObject({ name: "Quiche Lorraine" })
 
-- why didn't it show up?  need to add this to recipes controller:
+Why didn't it show up?  You need to add this line to the recipes controller:
 
   canEditCollection: true
 
-- now let's add some buttons:
+Let's add an "add" button.  Make some room for the button by changing the CSS for #recipes_list_scroll 
+to have height 95%.
 
-	- make room for buttons by changing #recipes_list_scroll height to 95%
+Add a generic view called sidebar_toolbar, right after the scroll_view in body.rhtml.  Inside
+this generic view, add a button view.  The button label should be "+" or "Add" as you
+prefer.  The button action should trigger 'Cookbook.recipesController.addObject'.
 
-	- add to body.rhtml
-    <% view :sidebar_toolbar do -%>
-  		<%= button_view :label => "+", :action => 'Cookbook.recipesController.addObject' %>
-    <% end -%>
-
-- add to recipe.js for default values
-
-  init: function() {
-    this.set('name','New Recipe');
-    sc_super();
-  }
-
-- add to recipesController
+Add this function to recipesController:
 
   addObject: function() {
-    var newObj = Cookbook.Recipe.newRecord({},Cookbook.server);
+    var newObj = Cookbook.Recipe.newRecord();
     this.pushObject(newObj);
     this.set('selection',[newObj]);
   }
 
-- reload browser, add object - why no save button?
+Note we are careful to use KVO-aware methods like pushObject when manipulating arrays, instead of
+native JavaScript commands.
 
-- add to recipeController
+Reload the browser and try adding an object.  Why isn't the save button enabled?
+
+We need to refine the app's understanding of when it has changes.  It's possible there's a 
+SproutCore property that does reflect this, but I couldn't find it, so we'll roll our own.
+
+Add a computed property to recipeController:
 
   saveable: function() {
     
@@ -394,21 +502,36 @@ in body.rhtml after sidebar add:
     return save;
   }.property('hasChanges','content*newRecord')
 
-- talk about computed properties and chained observers
+Raise your hand so I can come over and we can talk about computed properties and chained observers.
 
-- change save button to bind to "Cookbook.recipeController.saveable"
+Bind the save button's enabled property to "Cookbook.recipeController.saveable".
 
-- reload browser, check button, but still need create action
+Reload browser and make sure new objects are saveable.
 
-  before_filter :decode_recipe, :only => [:create,:update]
+Let's setup a default value for Recipe records.  Add this function to the Recipe model in recipe.js:
+
+  init: function() {
+    this.set('name','New Recipe');
+    sc_super();
+  }
+
+"sc_super" is exactly like Ruby's "super" method.  Raise your hand if you need more information.
+
+ADDING A CREATE ACTION TO THE RAILS APP
+
+The RecipesController on the server needs to know how to create a recipe.  I'm giving you 
+some of the code you'll need, but you'll have to fill in the missing piece.  Raise your
+hand if you get stuck!
+
+  before_filter :decode_recipe, :only => [:create]
 
   def create
 		# this is just SproutCore's temporary guid; we'll return the persistent, real guid if this is successful
     @recipe_params.delete('guid') 
     recipe = Recipe.create!(@recipe_params)
-    render :json => recipe.to_hash
+    render :json => ?????
   rescue ActiveRecord::RecordInvalid
-    render :text => "Unable to create recipe due to #{$!.message}", :status => 403
+    render :text => "Unable to create recipe due to #{$!.message}", :status => :unprocessable_entity
   end
 
   private
@@ -418,55 +541,60 @@ in body.rhtml after sidebar add:
     @recipe_params.delete('guid') # we use the URL id which is the same as the guid
   end
 
-- now try saving, check Rails server log
+Now try saving a newly-created recipe in the browser. Check the Rails server log to see what the result
+was.  
 
-- need auth token
+We need an auth token!  Otherwise our users are vulnerable to CSRF nastiness.
 
-- add recipe presetner index code for auth token
+Add the following lines to the index action:
 
     if protect_against_forgery?
       response_hash[:rails_auth_token_name] = request_forgery_protection_token
       response_hash[:rails_auth_token] = form_authenticity_token
     end
 
-- reload browser
+In the "parseFetchResponse" action in core_app.js, add code that extracts these
+values and sets some kind of global constant.  I recommend using Cookbook.RAILS_AUTH_TOKEN_NAME
+and Cookbook.RAILS_AUTH_TOKEN.
 
-- in console, type 
-	SC.RAILS_AUTH_TOKEN
+Now reload the browser. In the browser console, verify that your global constant has been set.
 
-- add to executeAjax method
+Raise your hand if you are confused :-)
+
+Add the followning to the executeAjax method
 
   opts.parameters = opts.parameters || {};
 
   if (opts.method != 'get') {
-    opts.parameters[SC.RAILS_AUTH_TOKEN_NAME] = SC.RAILS_AUTH_TOKEN;
+    opts.parameters[Cookbook.RAILS_AUTH_TOKEN_NAME] = Cookbook.RAILS_AUTH_TOKEN;
   } 
 
-- now try to add and save
+Now try to save a newly-created object.  All should be well.
 
-- notice that save button still enabled, need to add this to commit
-   this.set('newRecord',false); // bug, SC.Store should be doing this for us
+Notice that the save button is still enabled. I'm not sure if this is a SproutCore bug, or an
+error in my understanding but here's how to fix it. In the Recipe commit method, set "newRecord"
+to false (using KVC).
 
-- now refactor commit to handle updates; hint you will need to change the HTTP verb and the URL
-	based on the newRecord property
+PERSISTING UPDATES
 
-- add update action
+To make changes to existing records, we'll need to do some more work.  Refactor the commit method 
+to handle updates.  As a hint, this is a REST-style API, so you should only need to change the 
+HTTP verb and the URL.  Raise your hand if you need help.
 
-  def update    
-    recipe = Recipe.find(params[:id])
+Now add an update action to the controller.  Use the create action for inspiration.
 
-    if recipe.update_attributes(@recipe_params)
-      render :json => recipe.to_hash
-    else
-      render :text => "Unable to update recipe due to #{recipe.errors.full_messages.join(". ")}", :status => 403
-    end
-  end
+For bonus points, detect update errors and return an appropriate error message to the user.
 
-- now reload browser and try updating existing records
+Raise your hand if you need help getting this to work.
 
-- now add delete button that calls the destroyObject action on recipes controller. It should only be enabled if the recipesController "hasSelection" property is true
+At this point you should be able to create and update recipes with ease.
 
-- add to array controller
+PERSISTING DELETES
+
+Add a delete button next to the add button that calls the destroyObject action on recipes controller. 
+It should only be enabled if the recipesController "hasSelection" property is true.
+
+Add to array controller
 
   destroyObject: function() {
     // step through each selected object and call its destruction method
@@ -484,7 +612,10 @@ in body.rhtml after sidebar add:
     }
   },
 
-- add to recipe model
+(note that SproutCore arrays have a function called removeAt which we should be able to use here,
+which would be less expensive than calling removeObject, but it wasn't working for me here)
+
+Override the recipe model's destroy method:
 
   destroy: function(successFunction) {    
     var url = Cookbook.RECIPES_MEMBER_PATH.fmt(this.get('guid'));
@@ -502,42 +633,71 @@ in body.rhtml after sidebar add:
     Cookbook.executeAjax(url,'delete',opts);  
   }
 
-- add to recipes controller
+Add a destroy action to the recipes controller.
 
-  def destroy
-    Recipe.destroy(params[:id])
-    render :nothing => true
-  end
+Raise your hand if you need help.
 
-- reload browser and try to destroy
+Now reload the browser and try to destroy records.
 
-- now we need a custom view
+ADDING SOME SPICE
 
-- at console type
+At the command line in the Rails project, type:
  script/generate migration AddSpiceToRecipes spice:integer
 
-- add spice: levels to recipes.yml
-	may also want to add a few more objects here
-	
-- type rake db:migrate db:fixtures:load
+Add spice levels to the recipes.yml fixture file.
 
-- restart Rails server
+At the command line in the Rails project, type:
+	rake db:migrate db:fixtures:load
 
-- add to body above spice text
+Now restart the Rails server.
+
+Add these lines to the view, above the save and cancel buttons:
+
     <%= slider_view :minimum => 0, 
                       :maximum => 100, 
                       :bind => { :value => 'Cookbook.recipeController.spice' } %>
                       
-- try savng the object, notice that the value flickers and changes back; why?
+Try saving the object, notice that the spice value doesn't seem to stick; investigate why
+this might be.
 
-- change recipe model:
-  properties: ['name','prep_time','cook_time','spice'],
 
-- now let's save we want to display a meaningful text value
 
-- type sc-gen view cookbook/spice_label SC.LabelView
 
-- add to spice_label.js
+
+
+
+
+
+
+
+<<<no peeking>>>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SproutCore records hae no schema, so we need to tell the Recipe model about its new property that
+should be sent back to the server  Add "spice" to the list of properties, reload the browser, and try again.
+
+Now let's a meaningful text value to accompany the slider.  We want to tweak the behavior of what comes 
+with SproutCore, so we'll make our custom view based on the SC.LabelView class. 
+
+At the SproutCore project command line, type:
+	sc-gen view cookbook/spice_label SC.LabelView
+
+Add the following lines to spice_label.js:
 
   init: function () { sc_super(); this.render(); },
    
@@ -561,37 +721,103 @@ in body.rhtml after sidebar add:
     this.set('innerHTML',html);
   }.observes('content')
 
-- add to body.html below slider
+Raise your hand so we can discuss this code to make sure you understand it.  What's
+the difference between "==" and "==="?
+
+Add to body.html below the slider:
       <%= view :view => 'Cookbook.SpiceLabelView', 
                :tag => 'span',
                :bind => { :content => 'Cookbook.recipeController.spice' } %>
 
-- reload browser and play with slider
+Reload browser and play with the slider.  You should see the label text changing.
 
-- type sc-build and investigate public dir
+EVENT HANDLING
 
-EXERCISES
-	- setup a computed property on recipe that shows a label whether the recipe is "elaborate" or not
-		based on the total cookng time
-		
-	- have executeAjax increment a value for each reqeust that gets decremented on completion,
-		displaying an ajax spinner while that value is greater than 0
+We haven't delved into SproutCore's event handling capabilities yet. Add this code to
+your spice label.
 
-	- change arranged objects based on a toggle button
+  mouseDown: function(evt) {
+    this._isMouseDown = true;
+    return true ;
+  },
+  
+  mouseUp: function(evt) {
 
-	- add an automatic refresh that asks for newly-created recipes from the server
+    // only handle mouseUp if we previouly received a mouseDown
+    if (this._isMouseDown) {
+      this._isMouseDown = false;
+      var tgt = Event.element(evt) ;
+      var inside = false ;
+      while(tgt && (tgt != this.rootElement)) {
+        tgt = tgt.parentNode;
+      }
+    
+      if (tgt == this.rootElement) {
+        this.toggleClassName("caliente");
+      }
+    
+      return true ;
+    } else {
+      return false ;
+    }
+  }
+
+Raise your hand so we can discuss this code.  Why aren't we using KVC on the "_isMouseDown" property?
+
+UNIT TESTING
+
+Visit http://localhost:4020/sproutcore/-tests and inspect the results.
+
+Visit http://localhost:4020/cookbook/-tests and inspect the default tests for your app.
+
+Now add this code to tests/models/recipe.rhtml:
+
+  setup: function() {
+		// in a real app you'd want to have separate fixtures for unit tests
+    Cookbook.server.preload(Cookbook.FIXTURES); 
+    this.recipe = Cookbook.Recipe.find('1');
+  },
+  
+  "New recipes should have default values set": function() {
+    var newRecipe = Cookbook.Recipe.newRecord();
+    assertEqual("blah blah",newRecipe.get('name'));
+  }
+
+In your browser, click "rerun current test", and notice the test failure. Fix the test and re-run.
+
+Write a similar test for the Recipe.toQueryString function.
+
+FINISHING TOUCH
+
+Add this line to main.js:
+  document.title = 'Cookbook';
+
+Reload the browser to see the effect on the document title.
+
+QUICK FORAY INTO THE BUILD TOOLS
+ 
+In the SproutCore project command line, type
+	sc-build
 	
-LAST 30 MINUTES
-- SC 1.0 API diffs
-- review OIB code
+Now investigate the contents of the public dir.  These are the files you would put on your
+production server for real users.
 
-TODO
-- check proper invalid data response, is 403 the right code?
-- custom view for stale/pending etc
-- mouseUp/mouseDown
-- app page title
-- investigate HTML5 store?
-- write unit tests for recipe
+EXERCISES IF THERE IS TIME
+	- Setup a computed property on a recipe indicating whether the recipe is "elaborate" or not
+		based on the total cookng time; then bind a label on the form to that property.
+		
+	- Have executeAjax increment a value for each request that gets decremented on completion,
+		displaying an ajax spinner while that value is greater than 0.
 
-For futher refinement
-	- rescue action in public for ActiveRecord::RecordNotFound
+	- Override the arrangedObjects property on the recipes controller: have it sort the list of recipes by name
+		then have the sort order be determined by a "sortOrder" property, which is controlled by a SC toggle view.
+		
+	- Add an automatic refresh that asks for newly-created recipes from the server; for extra credit make sure
+	the server only returns objects that have been created or changed since the client was last updated. You
+	should use SC.Timer instead of native JavaScript timing functions (ask me to explain why).
+	
+HERE'S WHAT I'D LIKE TO DISCUSS IN THE LAST 30 MINUTES
+
+- SC 1.0 API differences
+- deployment issues
+- review production code that we use in OtherInbox

@@ -22,6 +22,34 @@ Cookbook.SpiceLabelView = SC.LabelView.extend({
     }
 
     this.set('innerHTML',html);
-  }.observes('content')
+  }.observes('content'),
+
+  // mousing code adapted from SC.Button implementation
+  
+  mouseDown: function(evt) {
+    this._isMouseDown = true;
+    return true ;
+  },
+  
+  mouseUp: function(evt) {
+
+    // only handle mouseUp if we previouly received a mouseDown
+    if (this._isMouseDown) {
+      this._isMouseDown = false;
+      var tgt = Event.element(evt) ;
+      var inside = false ;
+      while(tgt && (tgt != this.rootElement)) {
+        tgt = tgt.parentNode;
+      }
+    
+      if (tgt == this.rootElement) {
+        this.toggleClassName("caliente");
+      }
+    
+      return true ;
+    } else {
+      return false ;
+    }
+  }
 
 });
